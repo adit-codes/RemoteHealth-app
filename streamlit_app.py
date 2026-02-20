@@ -5,17 +5,21 @@ from datetime import datetime
 # PAGE CONFIG
 st.set_page_config(page_title="AI Health Agent", page_icon="🩺")
 
+# Change these to your actual n8n Webhook URLs
+URL_GLUCOSE_ANALYSIS = "https://byte-bees.app.n8n.cloud/webhook-test/GLUCOSE-LEVEL"
+URL_GET_SLOTS = "https://adi440.app.n8n.cloud/webhook-test/GET-SLOTS"
+URL_CONFIRM_APPOINTMENT = "https://adi440.app.n8n.cloud/webhook-test/CONFIRM-APPOINTMENT"
+
 st.title("🩺 AI Medical Monitoring Portal")
 
 tab1, tab2 = st.tabs(["Glucose Monitoring", "Schedule Appointment"])
 
-# --- TAB 1: SIMULTANEOUS GLUCOSE MONITORING ---
+# --- TAB 1: GLUCOSE MONITORING (Refactored) ---
 with tab1:
     st.markdown("Enter your glucose readings for analysis.")
     with st.form("health_entry"):
         patient_name = st.text_input("Patient Name", value="John Doe")
         
-        # Dual inputs for same-time submission
         col1, col2 = st.columns(2)
         with col1:
             pre_meal = st.number_input("Pre-Meal Glucose (mg/dL)", min_value=20, max_value=500, value=100)
@@ -26,12 +30,8 @@ with tab1:
         submit_button = st.form_submit_button("Submit Both Readings")
 
     if submit_button:
-        WEBHOOK_URL = "https://byte-bees.app.n8n.cloud/webhook-test/GLUCOSE-LEVEL"
-        
-        # Sending both readings in one structured payload
         payload = {
             "Date": datetime.now().strftime("%Y-%m-%d"),
-            "Time": datetime.now().strftime("%H:%M:%S"),
             "Patient_Name": patient_name,
             "Readings": [
                 {"Glucose_Level": pre_meal, "Reading_Type": "Pre-Meal"},
@@ -42,53 +42,61 @@ with tab1:
         
         with st.spinner("Agent checking trends..."):
             try:
-                response = requests.post(WEBHOOK_URL, json=payload)
+                response = requests.post(URL_GLUCOSE_ANALYSIS, json=payload)
                 if response.status_code == 200:
                     result = response.text.strip().lower()
+                    # Only show error if 'true' (Dangerous)
+                    # The 'Stable' message is now handled by your n8n Respond to Webhook node
                     if result == "true":
                         st.error("🚨 **RISK DETECTED:** The agent flagged a dangerous trend.")
                     else:
-                        st.success("✅ **STABLE:** No immediate risks detected.")
+                        # Display the actual text returned from n8n Respond to Webhook
+                        st.info(response.text) 
+                else:
+                    st.error("Error communicating with Analysis Agent.")
             except Exception as e:
                 st.error(f"Connection Error: {e}")
 
-# --- TAB 2: APPOINTMENT SCHEDULING ---
+# --- TAB 2: APPOINTMENT SCHEDULING (3-Workflow Logic) ---
 with tab2:
     st.subheader("📅 Doctor's Schedule")
     
-    # Trigger to fetch slots
+    # 1. Trigger Workflow 2: Fetch Slots
     if st.button("Check Doctor Availability"):
         with st.spinner("Fetching slots..."):
             try:
-                # Replace with your actual n8n GET slots URL
-                slot_url = "https://adi440.app.n8n.cloud/webhook-test/GET-SLOTS"
-                res = requests.get(slot_url)
+                res = requests.get(URL_GET_SLOTS)
                 if res.status_code == 200:
-                    # Store slots in session state so they persist
+                    # Expecting n8n to return: {"slots": ["Slot 1", "Slot 2", "Slot 3"]}
                     st.session_state.slots = res.json().get("slots", [])
                 else:
-                    st.error("Failed to load slots.")
+                    st.error("Could not retrieve slots.")
             except:
-                st.error("Agent is offline.")
+                st.error("Availability Agent is offline.")
 
-    # If slots are loaded, show selection
+    # 2. Display Slots as Individual Buttons (Triggering Workflow 3)
     if "slots" in st.session_state and st.session_state.slots:
-        selected_date = st.selectbox("Select an available date/time:", st.session_state.slots)
+        st.write("Click a slot to confirm:")
         
-        if st.button("Confirm Selection"):
-            with st.spinner("Syncing with Agent..."):
-                try:
-                    confirm_url = "https://adi440.app.n8n.cloud/webhook-test/CONFIRM-APPOINTMENT"
-                    conf_res = requests.post(confirm_url, json={
-                        "selected_date": selected_date,
-                        "patient": patient_name
-                    })
-                    
-                    if conf_res.status_code == 200:
-                        # Display specific confirmation text
-                        st.success(f"Successfully Displayed: Appointment confirmed for {selected_date}")
-                        st.balloons()
-                    else:
-                        st.error("Agent failed to book the slot.")
-                except Exception as e:
-                    st.error(f"Error: {e}")
+        # Create a layout for buttons
+        cols = st.columns(len(st.session_state.slots))
+        
+        for index, slot in enumerate(st.session_state.slots):
+            if cols[index].button(slot, key=f"slot_{index}"):
+                # 3. Trigger Workflow 3: Confirm Appointment
+                with st.spinner(f"Booking {slot}..."):
+                    try:
+                        confirm_res = requests.post(URL_CONFIRM_APPOINTMENT, json={
+                            "selected_date": slot,
+                            "patient": patient_name
+                        })
+                        if confirm_res.status_code == 200:
+                            # Show the "Respond to Webhook" text from Workflow 3
+                            st.success(confirm_res.text)
+                            st.balloons()
+                            # Clear slots from state after successful booking
+                            del st.session_state.slots
+                        else:
+                            st.error("Booking failed.")
+                    except Exception as e:
+                        st.error(f"Error: {e}")
