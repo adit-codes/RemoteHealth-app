@@ -57,23 +57,33 @@ with tab1:
             except Exception as e:
                 st.error(f"Connection Error: {e}")
 
-# --- TAB 2: APPOINTMENT SCHEDULING (3-Workflow Logic) ---
+# --- TAB 2: APPOINTMENT SCHEDULING ---
 with tab2:
     st.subheader("📅 Doctor's Schedule")
     
-    # 1. Trigger Workflow 2: Fetch Slots
+    # 1. Trigger Workflow: Fetch Slots
     if st.button("Check Doctor Availability"):
         with st.spinner("Fetching slots..."):
             try:
                 res = requests.get(URL_GET_SLOTS)
                 if res.status_code == 200:
-                    # Expecting n8n to return: {"slots": ["Slot 1", "Slot 2", "Slot 3"]}
-                    st.session_state.slots = res.json().get("slots", [])
+                    # 1. Get the raw response data
+                    data = res.json()
+                    
+                    # 2. Extract the 'slots' part
+                    slots_data = data.get("slots", {})
+                    
+                    # 3. Convert dictionary values to a list if necessary
+                    if isinstance(slots_data, dict):
+                        st.session_state.slots = list(slots_data.values())
+                    else:
+                        st.session_state.slots = slots_data
+                        
+                    st.success(f"Found {len(st.session_state.slots)} available slots!")
                 else:
-                    st.error("Could not retrieve slots.")
-            except:
-                st.error("Availability Agent is offline.")
-
+                    st.error(f"Error {res.status_code}: Could not retrieve slots.")
+            except Exception as e:
+                st.error(f"Connection Error: {e}")
     # 2. Display Slots as Individual Buttons (Triggering Workflow 3)
     if "slots" in st.session_state and st.session_state.slots:
         st.write("Click a slot to confirm:")
