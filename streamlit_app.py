@@ -26,7 +26,7 @@ with tab1:
         submit_button = st.form_submit_button("Submit Both Readings")
 
     if submit_button:
-        WEBHOOK_URL = "https://adi440.app.n8n.cloud/webhook-test/GLUCOSE-LEVEL"
+        WEBHOOK_URL = "https://byte-bees.app.n8n.cloud/webhook-test/GLUCOSE-LEVEL"
         
         # Sending both readings in one structured payload
         payload = {
