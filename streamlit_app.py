@@ -78,11 +78,7 @@ with tab2:
                         st.session_state.slots = list(slots_data.values())
                     else:
                         st.session_state.slots = slots_data
-                    try:
-                        res = requests.get(URL_GET_SLOTS)
-                        print(f"Status: {res.status_code}") # Look at your terminal
-                        print(f"Raw Response: '{res.text}'") # This will show you if it's empty
-    
+                   
     if res.status_code == 200 and res.text:
         data = res.json()
         # ... your logic ...
