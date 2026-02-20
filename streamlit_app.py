@@ -14,7 +14,7 @@ st.title("🩺 AI Medical Monitoring Portal")
 
 tab1, tab2 = st.tabs(["Glucose Monitoring", "Schedule Appointment"])
 
-# --- TAB 1: GLUCOSE MONITORING (Refactored) ---
+# --- TAB 1: GLUCOSE MONITORING ---
 with tab1:
     st.markdown("Enter your glucose readings for analysis.")
     with st.form("health_entry"):
@@ -45,12 +45,9 @@ with tab1:
                 response = requests.post(URL_GLUCOSE_ANALYSIS, json=payload)
                 if response.status_code == 200:
                     result = response.text.strip().lower()
-                    # Only show error if 'true' (Dangerous)
-                    # The 'Stable' message is now handled by your n8n Respond to Webhook node
                     if result == "true":
                         st.error("🚨 **RISK DETECTED:** The agent flagged a dangerous trend.")
                     else:
-                        # Display the actual text returned from n8n Respond to Webhook
                         st.info(response.text) 
                 else:
                     st.error("Error communicating with Analysis Agent.")
@@ -61,60 +58,27 @@ with tab1:
 with tab2:
     st.subheader("📅 Doctor's Schedule")
     
-    # 1. Trigger Workflow: Fetch Slots
     if st.button("Check Doctor Availability"):
         with st.spinner("Fetching slots..."):
             try:
                 res = requests.get(URL_GET_SLOTS)
-                if res.status_code == 200:
-                    # 1. Get the raw response data
+                if res.status_code == 200 and res.text:
                     data = res.json()
-                    
-                    # 2. Extract the 'slots' part
+                    # Extract the 'slots' part
                     slots_data = data.get("slots", {})
                     
-                    # 3. Convert dictionary values to a list if necessary
+                    # Convert to list if it's a dict
                     if isinstance(slots_data, dict):
                         st.session_state.slots = list(slots_data.values())
                     else:
                         st.session_state.slots = slots_data
-                   
-    if res.status_code == 200 and res.text:
-        data = res.json()
-        # ... your logic ...
-    else:
-        st.error(f"Received empty response from server. Status: {res.status_code}")
-except Exception as e:
-    st.error(f"Error: {e}")
-                        
+                    
                     st.success(f"Found {len(st.session_state.slots)} available slots!")
                 else:
                     st.error(f"Error {res.status_code}: Could not retrieve slots.")
             except Exception as e:
                 st.error(f"Connection Error: {e}")
-    # 2. Display Slots as Individual Buttons (Triggering Workflow 3)
+
+    # Display Slots
     if "slots" in st.session_state and st.session_state.slots:
         st.write("Click a slot to confirm:")
-        
-        # Create a layout for buttons
-        cols = st.columns(len(st.session_state.slots))
-        
-        for index, slot in enumerate(st.session_state.slots):
-            if cols[index].button(slot, key=f"slot_{index}"):
-                # 3. Trigger Workflow 3: Confirm Appointment
-                with st.spinner(f"Booking {slot}..."):
-                    try:
-                        confirm_res = requests.post(URL_CONFIRM_APPOINTMENT, json={
-                            "selected_date": slot,
-                            "patient": patient_name
-                        })
-                        if confirm_res.status_code == 200:
-                            # Show the "Respond to Webhook" text from Workflow 3
-                            st.success(confirm_res.text)
-                            st.balloons()
-                            # Clear slots from state after successful booking
-                            del st.session_state.slots
-                        else:
-                            st.error("Booking failed.")
-                    except Exception as e:
-                        st.error(f"Error: {e}")
