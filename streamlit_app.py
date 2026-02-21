@@ -53,6 +53,7 @@ with tab1:
                     st.error("Error communicating with Analysis Agent.")
             except Exception as e:
                 st.error(f"Connection Error: {e}")
+import json
 
 # --- TAB 2: APPOINTMENT SCHEDULING ---
 with tab2:
@@ -64,46 +65,51 @@ with tab2:
                 res = requests.get(URL_GET_SLOTS)
                 if res.status_code == 200 and res.text:
                     data = res.json()
-                    # Extract the 'slots' part
-                    slots_data = data.get("slots", {})
                     
-                    # Convert to list if it's a dict
-                    if isinstance(slots_data, dict):
-                        st.session_state.slots = list(slots_data.values())
-                    else:
-                        st.session_state.slots = slots_data
+                    # 1. Extract the slots
+                    slots_raw = data.get("slots", {})
+                    
+                    # 2. Handle if n8n sends slots as a JSON string instead of an object
+                    if isinstance(slots_raw, str):
+                        slots_raw = json.loads(slots_raw)
+                    
+                    # 3. Store the full Dictionary in session state (don't convert to list)
+                    st.session_state.slots = slots_raw
                     
                     st.success(f"Found {len(st.session_state.slots)} available slots!")
                 else:
                     st.error(f"Error {res.status_code}: Could not retrieve slots.")
             except Exception as e:
                 st.error(f"Connection Error: {e}")
-# Display Slots
-if "slots" in st.session_state and st.session_state.slots:
-    st.write("Click a slot to confirm:")
-    
-    # Iterate through the dictionary from your n8n output
-    for slot_key, slot_time in st.session_state.slots.items():
-        # Create a button for each slot
-        if st.button(slot_time, key=slot_key, use_container_width=True):
-            
-            # 1. Prepare the data to send back
-            payload = {
-                "selected_slot": slot_time,
-                "slot_id": slot_key,
-                "status": "CONFIRMED"
-            }
-            
-            # 2. Trigger the Webhook
-            try:
-                response = requests.post(URL_CONFIRM_APPOINTMENT, json=payload)
+
+    # --- DISPLAY SLOTS & HANDLE CONFIRMATION ---
+    # We use .get() to avoid errors if the key doesn't exist yet
+    current_slots = st.session_state.get("slots", {})
+
+    if current_slots:
+        st.write("Click a slot to confirm:")
+        
+        # Now .items() will work because current_slots is a dictionary
+        for slot_key, slot_time in current_slots.items():
+            if st.button(slot_time, key=slot_key, use_container_width=True):
                 
-                if response.status_code == 200:
-                    st.success(f"✅ Appointment confirmed for {slot_time}!")
-                    # Optional: Clear slots so they don't click again
-                    st.session_state.slots = {} 
-                    st.rerun()
-                else:
-                    st.error(f"Failed to confirm. Error: {response.status_code}")
-            except Exception as e:
-                st.error(f"An error occurred: {e}")
+                payload = {
+                    "selected_slot": slot_time,
+                    "slot_id": slot_key,
+                    "patient_name": patient_name, # Added this from Tab 1 for context
+                    "status": "CONFIRMED"
+                }
+                
+                try:
+                    with st.spinner("Confirming..."):
+                        response = requests.post(URL_CONFIRM_APPOINTMENT, json=payload)
+                    
+                    if response.status_code == 200:
+                        st.success(f"✅ Appointment confirmed for {slot_time}!")
+                        # Clear state and refresh
+                        st.session_state.slots = {} 
+                        st.rerun()
+                    else:
+                        st.error(f"Failed to confirm. Error: {response.status_code}")
+                except Exception as e:
+                    st.error(f"An error occurred: {e}")
