@@ -78,7 +78,32 @@ with tab2:
                     st.error(f"Error {res.status_code}: Could not retrieve slots.")
             except Exception as e:
                 st.error(f"Connection Error: {e}")
-
-    # Display Slots
-    if "slots" in st.session_state and st.session_state.slots:
-        st.write("Click a slot to confirm:")
+# Display Slots
+if "slots" in st.session_state and st.session_state.slots:
+    st.write("Click a slot to confirm:")
+    
+    # Iterate through the dictionary from your n8n output
+    for slot_key, slot_time in st.session_state.slots.items():
+        # Create a button for each slot
+        if st.button(slot_time, key=slot_key, use_container_width=True):
+            
+            # 1. Prepare the data to send back
+            payload = {
+                "selected_slot": slot_time,
+                "slot_id": slot_key,
+                "status": "CONFIRMED"
+            }
+            
+            # 2. Trigger the Webhook
+            try:
+                response = requests.post(URL_CONFIRM_APPOINTMENT, json=payload)
+                
+                if response.status_code == 200:
+                    st.success(f"✅ Appointment confirmed for {slot_time}!")
+                    # Optional: Clear slots so they don't click again
+                    st.session_state.slots = {} 
+                    st.rerun()
+                else:
+                    st.error(f"Failed to confirm. Error: {response.status_code}")
+            except Exception as e:
+                st.error(f"An error occurred: {e}")
