@@ -8,7 +8,7 @@ st.set_page_config(page_title="AI Health Agent", page_icon="🩺")
 # Change these to your actual n8n Webhook URLs
 URL_GLUCOSE_ANALYSIS = "https://byte-bees.app.n8n.cloud/webhook/12e2a32e-2034-4ee2-8eec-8fbb4b5c270c"
 URL_GET_SLOTS = "https://byte-bees.app.n8n.cloud/webhook/calendar"
-URL_CONFIRM_APPOINTMENT = "https://byte-bees.app.n8n.cloud/webhook-test/slotbook_calendar"
+URL_CONFIRM_APPOINTMENT = "https://byte-bees.app.n8n.cloud/webhook/slotbook_calendar"
 
 st.title("🩺 AI Medical Monitoring Portal")
 
@@ -104,6 +104,8 @@ with tab2:
                     with st.spinner("Confirming..."):
                         st.write(f"Attempting to connect to: {URL_CONFIRM_APPOINTMENT}")
                         response = requests.post(URL_CONFIRM_APPOINTMENT, json=payload)
+                        st.write(f"Target URL: {URL_CONFIRM_APPOINTMENT}")
+                        # Ensure this URL does NOT have "-test" in it if the workflow is Active.
                     
                     if response.status_code == 200:
                         st.success(f"✅ Appointment confirmed for {slot_time}!")
