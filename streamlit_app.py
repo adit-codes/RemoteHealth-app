@@ -63,6 +63,8 @@ with tab2:
         with st.spinner("Fetching slots..."):
             try:
                 res = requests.get(URL_GET_SLOTS)
+                st.write(f"DEBUG: Status Code {res.status_code}")
+                st.write(f"DEBUG: Raw Content: {res.text}")
                 if res.status_code == 200 and res.text:
                     data = res.json()
                     
