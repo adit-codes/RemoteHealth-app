@@ -63,8 +63,6 @@ with tab2:
         with st.spinner("Fetching slots..."):
             try:
                 res = requests.get(URL_GET_SLOTS)
-                st.write(f"DEBUG: Status Code {res.status_code}")
-                st.write(f"DEBUG: Raw Content: {res.text}")
                 if res.status_code == 200 and res.text:
                     data = res.json()
                     
@@ -104,6 +102,7 @@ with tab2:
                 
                 try:
                     with st.spinner("Confirming..."):
+                        st.write(f"Attempting to connect to: {URL_CONFIRM_APPOINTMENT}")
                         response = requests.post(URL_CONFIRM_APPOINTMENT, json=payload)
                     
                     if response.status_code == 200:
