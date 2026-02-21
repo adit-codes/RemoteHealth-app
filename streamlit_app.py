@@ -7,7 +7,7 @@ st.set_page_config(page_title="AI Health Agent", page_icon="🩺")
 
 # Change these to your actual n8n Webhook URLs
 URL_GLUCOSE_ANALYSIS = "https://byte-bees.app.n8n.cloud/webhook/12e2a32e-2034-4ee2-8eec-8fbb4b5c270c"
-URL_GET_SLOTS = "https://byte-bees.app.n8n.cloud/webhook/calendar"
+URL_GET_SLOTS = "https://byte-bees.app.n8n.cloud/webhook-test/calendar"
 URL_CONFIRM_APPOINTMENT = "https://byte-bees.app.n8n.cloud/webhook/3e3e8ef7-a4ca-447e-b527-879e34a68104"
 
 st.title("🩺 AI Medical Monitoring Portal")
